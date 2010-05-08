@@ -69,6 +69,7 @@ namespace Paxos
 			state.NumberOfPromises = 0;
 			state.NumberOfAccepts = 0;
 			state.LastMessage = DateTime.Now;
+			state.QuorumReached = false;
 			foreach (var acceptor in acceptors)
 			{
 				acceptor.SendMessage(new Propose
@@ -94,8 +95,12 @@ namespace Paxos
 			
 			state.NumberOfPromises++;
 			state.LastMessage = DateTime.Now;
+
+			if (state.QuorumReached)
+				return;
 			if (state.NumberOfPromises <= acceptors.Length / 2)
 				return;
+			state.QuorumReached = true;
 			state.ChosenValue = state.ValuesToBeChoosen.FirstOrDefault() ?? state.InitialValue;
 			foreach (var acceptor in acceptors)
 			{
@@ -152,6 +157,7 @@ namespace Paxos
 
 		private class ProposalState
 		{
+			public bool QuorumReached{ get; set;}
 			public int ProposalNumber { get; set; }
 			public int BallotNumber { get; set; }
 			public int NumberOfPromises { get; set; }

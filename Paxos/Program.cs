@@ -45,6 +45,7 @@ namespace Paxos
 
 			ConsumeAllMessages(agents);
 
+			Console.WriteLine(learners[0].Commands.Count);
 			foreach (var learner in learners)
 			{
 				Debug.Assert(learner.Commands.Count == 3);
