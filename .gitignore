@@ -1,0 +1,17 @@
+*resharper.user
+[Dd]ebug/
+[Rr]elease/
+build/
+[Bb]in/
+[Oo]bj/
+*.suo
+*.sln.cache
+_ReSharper.*/
+*.user
+/Data/Data
+/Data/IndexDefinitions/
+/Data/Index/
+/Data/logs/
+/Data/system/
+/Data/temp/
+*.InstallLog
