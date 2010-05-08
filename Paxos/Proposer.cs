@@ -112,9 +112,13 @@ namespace Paxos
 					BallotNumber = state.BallotNumber
 				});
 			}
-			// restart the whole thing
+			// if we selected a different value
 			if (state.ChosenValue != state.InitialValue)
+			{
+				//restart the whole things
+				proposalsState.Remove(state.ProposalNumber);
 				Propose(state.InitialValue);
+			}
 		}
 
 		private int GenerateNextProposalNumber()
