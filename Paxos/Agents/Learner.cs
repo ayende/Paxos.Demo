@@ -1,15 +1,17 @@
 using System.Collections.Generic;
-using Paxos.Messages;
 using System.Linq;
+using Paxos.Commands;
+using Paxos.Messages;
 
-namespace Paxos
+namespace Paxos.Agents
 {
 	public class Learner : Agent
 	{
 		private readonly int acceptorsCount;
 
-		private readonly Dictionary<int, LearnerState> learnerState = new Dictionary<int, LearnerState>();
 		private readonly HashSet<Agent> knownAcceptors = new HashSet<Agent>();
+		private readonly Dictionary<int, LearnerState> learnerState = new Dictionary<int, LearnerState>();
+
 		public Learner(int acceptorsCount)
 		{
 			this.acceptorsCount = acceptorsCount;
@@ -21,17 +23,14 @@ namespace Paxos
 
 		public int AppliedValue
 		{
-			get
-			{
-				return Commands.TakeWhile(command => command != null).Aggregate(0, (current, command) => command.Execute(current));
-			}
+			get { return Commands.TakeWhile(command => command != null).Aggregate(0, (current, command) => command.Execute(current)); }
 		}
 
 		private void OnAccepted(Accepted accepted)
 		{
 			knownAcceptors.Add(accepted.Originator);
 			LearnerState state;
-			if(learnerState.TryGetValue(accepted.ProposalNumber, out state) == false)
+			if (learnerState.TryGetValue(accepted.ProposalNumber, out state) == false)
 			{
 				learnerState[accepted.ProposalNumber] = new LearnerState
 				{
@@ -40,16 +39,16 @@ namespace Paxos
 					ProposalNumber = accepted.ProposalNumber
 				};
 			}
-			else if(state.BallotNumber < accepted.BallotNumber)
+			else if (state.BallotNumber < accepted.BallotNumber)
 			{
 				return;
 			}
-			else if(state.Accepted == false)
+			else if (state.Accepted == false)
 			{
 				state.NumberOfAccepts += 1;
-				if (state.NumberOfAccepts < acceptorsCount / 2)
+				if (state.NumberOfAccepts < acceptorsCount/2)
 					return;
-				while(Commands.Count < state.ProposalNumber)
+				while (Commands.Count < state.ProposalNumber)
 					Commands.Add(null);
 				state.Accepted = true;
 				Commands[state.ProposalNumber - 1] = accepted.Value;
@@ -58,11 +57,11 @@ namespace Paxos
 
 		public override bool ProcessTimeouts()
 		{
-			bool requestedHoles = false;
+			var requestedHoles = false;
 			var missingProposals = new List<int>();
-			for (int i = 0; i < Commands.Count; i++)
+			for (var i = 0; i < Commands.Count; i++)
 			{
-				if(Commands[i] == null)
+				if (Commands[i] == null)
 					missingProposals.Add(i + 1);
 			}
 			foreach (var missingProposal in missingProposals)

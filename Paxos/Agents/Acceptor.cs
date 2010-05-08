@@ -1,22 +1,22 @@
-using System;
 using System.Collections.Generic;
-using Paxos.Messages;
 using System.Linq;
+using Paxos.Commands;
+using Paxos.Messages;
 
-namespace Paxos
+namespace Paxos.Agents
 {
 	public class Acceptor : Agent
 	{
+		private readonly Dictionary<int, AcceptState> acceptorState = new Dictionary<int, AcceptState>();
 		private readonly Learner[] learners;
 
-		private class AcceptState
+		public Acceptor(Learner[] learners)
 		{
-			public int ProposalNumber { get; set; }
-			public int BallotNumber { get; set; }
-			public ICommand AcceptedValue { get; set; }
+			this.learners = learners;
+			Register<Propose>(OnPropose);
+			Register<Accept>(OnAccept);
+			Register<AcceptedValueQuery>(OnAcceptedValueQuery);
 		}
-
-		private readonly Dictionary<int, AcceptState> acceptorState = new Dictionary<int, AcceptState>();
 
 		public int AcceptedProposalNumber
 		{
@@ -26,14 +26,6 @@ namespace Paxos
 					return 0;
 				return acceptorState.Where(x => x.Value.AcceptedValue != null).Max(x => x.Key);
 			}
-		}
-
-		public Acceptor(Learner[] learners)
-		{
-			this.learners = learners;
-			Register<Propose>(OnPropose);
-			Register<Accept>(OnAccept);
-			Register<AcceptedValueQuery>(OnAcceptedValueQuery);
 		}
 
 		private void OnAcceptedValueQuery(AcceptedValueQuery acceptedValueQuery)
@@ -56,8 +48,8 @@ namespace Paxos
 		{
 			AcceptState state;
 			if (acceptorState.TryGetValue(accept.ProposalNumber, out state) == false)
-				return;// trying to accept without a propsal?
-			if(accept.BallotNumber < state.BallotNumber)
+				return; // trying to accept without a propsal?
+			if (accept.BallotNumber < state.BallotNumber)
 			{
 				accept.Originator.SendMessage(new ProposalSubsumed
 				{
@@ -91,9 +83,9 @@ namespace Paxos
 		private void OnPropose(Propose propose)
 		{
 			AcceptState state;
-			if(acceptorState.TryGetValue(propose.ProposalNumber, out state))
+			if (acceptorState.TryGetValue(propose.ProposalNumber, out state))
 			{
-				if (propose.BallotNumber <= state.BallotNumber) 
+				if (propose.BallotNumber <= state.BallotNumber)
 				{
 					propose.Originator.SendMessage(new ProposalSubsumed
 					{
@@ -129,7 +121,17 @@ namespace Paxos
 					Originator = this
 				});
 			}
-			
 		}
+
+		#region Nested type: AcceptState
+
+		private class AcceptState
+		{
+			public int ProposalNumber { get; set; }
+			public int BallotNumber { get; set; }
+			public ICommand AcceptedValue { get; set; }
+		}
+
+		#endregion
 	}
 }

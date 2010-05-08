@@ -1,17 +1,14 @@
 ﻿using System;
-using System.Diagnostics;
-using System.Threading;
-using log4net.Appender;
-using log4net.Config;
-using log4net.Layout;
-using Paxos.Commands;
 using System.Linq;
+using System.Threading;
+using Paxos.Agents;
+using Paxos.Commands;
 
 namespace Paxos
 {
-	class Program
+	internal class Program
 	{
-		static void Main()
+		private static void Main()
 		{
 			//BasicConfigurator.Configure(new ConsoleAppender
 			//{
@@ -20,9 +17,9 @@ namespace Paxos
 
 			var learners = new[]
 			{
-				new Learner(acceptorsCount:3),
-				new Learner(acceptorsCount:3),
-				new Learner(acceptorsCount:3),
+				new Learner(acceptorsCount: 3),
+				new Learner(acceptorsCount: 3),
+				new Learner(acceptorsCount: 3),
 			};
 			var acceptors = new[]
 			{
@@ -39,32 +36,45 @@ namespace Paxos
 
 			var agents = acceptors.OfType<Agent>().Union(proposers).Union(learners).ToArray();
 
-			proposers[0].Propose(new Add { Value = 5 });
-			proposers[1].Propose(new Multiply { Value = 3 });
-			proposers[2].Propose(new Add { Value = 2 });
+			proposers[0].Propose(new Add {Value = 5});
+			proposers[1].Propose(new Multiply {Value = 3});
+			proposers[2].Propose(new Add {Value = 2});
 
 			ConsumeAllMessages(agents);
 
-			foreach (var learner in learners)
-			{
-				Debug.Assert(learner.Commands.Count == 3);
-				Console.WriteLine(learner.AppliedValue);
-			}
+			WaitForNewValues(learners);
 
-			proposers[2].Propose(new Multiply { Value = 3 });
-			proposers[1].Propose(new Add { Value = 4 });
+			proposers[2].Propose(new Multiply {Value = 3});
+			proposers[1].Propose(new Add {Value = 4});
 			ConsumeAllMessages(agents);
 
-			foreach (var learner in learners)
+			WaitForNewValues(learners);
+		}
+
+		private static void WaitForNewValues(Learner[] learners)
+		{
+			Console.WriteLine("Waiting for new values");
+			var shouldStop = 0;
+			ThreadPool.QueueUserWorkItem(state =>
 			{
-				Debug.Assert(learner.Commands.Count == 5);
-				Console.WriteLine(learner.AppliedValue);
-			}
+				while (Thread.VolatileRead(ref shouldStop) == 0)
+				{
+					Thread.Sleep(1000);
+					foreach (var learner in learners)
+					{
+						Console.WriteLine(learner.AppliedValue);
+					}
+					Console.WriteLine("- - - - - - - - -");
+				}
+			});
+
+			Console.ReadLine();
+			Thread.VolatileWrite(ref shouldStop, 1);
 		}
 
 		private static void ConsumeAllMessages(Agent[] agents)
 		{
-			bool hadMessages = true;
+			var hadMessages = true;
 			while (hadMessages)
 			{
 				hadMessages = false;
@@ -82,7 +92,6 @@ namespace Paxos
 				//        hadMessages = true;
 				//}
 			}
-			
 		}
 	}
 }

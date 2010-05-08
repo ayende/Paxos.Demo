@@ -1,18 +1,19 @@
 using System;
 using System.Collections.Generic;
-using Paxos.Messages;
 using System.Linq;
+using Paxos.Commands;
+using Paxos.Messages;
 
-namespace Paxos
+namespace Paxos.Agents
 {
 	public class Proposer : Agent
 	{
-		private readonly Acceptor myAcceptor;
-		private readonly int ballotBase;
-		private int proposalNumber;
-		private readonly Dictionary<int, ProposalState> proposalsState = new Dictionary<int, ProposalState>();
-		private readonly Acceptor[] acceptors; // this include our acceptor;
 		public const int BallotStep = 1000;
+		private readonly Acceptor[] acceptors; // this include our acceptor;
+		private readonly int ballotBase;
+		private readonly Acceptor myAcceptor;
+		private readonly Dictionary<int, ProposalState> proposalsState = new Dictionary<int, ProposalState>();
+		private int proposalNumber;
 
 		public Proposer(Acceptor myAcceptor, Acceptor[] acceptors, int ballotBase)
 		{
@@ -32,7 +33,7 @@ namespace Paxos
 			if (proposalsState.TryGetValue(accepted.ProposalNumber, out state) == false)
 				return;
 			state.NumberOfAccepts += 1;
-			if (state.NumberOfAccepts <= acceptors.Length / 2)
+			if (state.NumberOfAccepts <= acceptors.Length/2)
 				return;
 			proposalsState.Remove(state.ProposalNumber);
 		}
@@ -64,7 +65,7 @@ namespace Paxos
 			if (proposalsState.TryGetValue(proposalSubsumed.ProposalNumber, out state) == false)
 				return; // delayed / duplicate message, probably
 			if (state.BallotNumber > proposalSubsumed.BallotNumber)
-				return;// probably already suggested higher number
+				return; // probably already suggested higher number
 			state.BallotNumber += BallotStep;
 			state.NumberOfPromises = 0;
 			state.NumberOfAccepts = 0;
@@ -89,16 +90,16 @@ namespace Paxos
 
 			if (state.BallotNumber != promise.BallotNumber)
 				return;
-		
+
 			if (promise.AcceptedValue != null)
 				state.ValuesToBeChoosen.Add(promise.AcceptedValue);
-			
+
 			state.NumberOfPromises++;
 			state.LastMessage = DateTime.Now;
 
 			if (state.QuorumReached)
 				return;
-			if (state.NumberOfPromises <= acceptors.Length / 2)
+			if (state.NumberOfPromises <= acceptors.Length/2)
 				return;
 			state.QuorumReached = true;
 			state.ChosenValue = state.ValuesToBeChoosen.FirstOrDefault() ?? state.InitialValue;
@@ -142,7 +143,7 @@ namespace Paxos
 
 		public override bool ProcessTimeouts()
 		{
-			bool suggested = false;
+			var suggested = false;
 			foreach (var timedOutPropsalState in proposalsState.Values.Where(x => x.LastMessage.AddSeconds(1) < DateTime.Now))
 			{
 				suggested = true;
@@ -159,9 +160,16 @@ namespace Paxos
 			return suggested;
 		}
 
+		#region Nested type: ProposalState
+
 		private class ProposalState
 		{
-			public bool QuorumReached{ get; set;}
+			public ProposalState()
+			{
+				ValuesToBeChoosen = new List<ICommand>();
+			}
+
+			public bool QuorumReached { get; set; }
 			public int ProposalNumber { get; set; }
 			public int BallotNumber { get; set; }
 			public int NumberOfPromises { get; set; }
@@ -172,16 +180,17 @@ namespace Paxos
 			public ICommand ChosenValue { get; set; }
 
 			public int NumberOfAccepts { get; set; }
-
-			public ProposalState()
-			{
-				ValuesToBeChoosen = new List<ICommand>();
-			}
 		}
+
+		#endregion
+
+		#region Nested type: StartProposing
 
 		private class StartProposing : Message
 		{
 			public ICommand Value { get; set; }
 		}
+
+		#endregion
 	}
 }

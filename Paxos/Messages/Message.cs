@@ -1,3 +1,5 @@
+using Paxos.Agents;
+
 namespace Paxos.Messages
 {
 	public abstract class Message

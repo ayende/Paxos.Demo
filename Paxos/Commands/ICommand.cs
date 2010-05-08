@@ -1,4 +1,4 @@
-namespace Paxos
+namespace Paxos.Commands
 {
 	public interface ICommand
 	{

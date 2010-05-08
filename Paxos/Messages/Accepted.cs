@@ -1,3 +1,5 @@
+using Paxos.Commands;
+
 namespace Paxos.Messages
 {
 	public class Accepted : Message

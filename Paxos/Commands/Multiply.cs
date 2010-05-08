@@ -4,9 +4,13 @@ namespace Paxos.Commands
 	{
 		public int Value { get; set; }
 
+		#region ICommand Members
+
 		public int Execute(int currentValue)
 		{
 			return currentValue*Value;
 		}
+
+		#endregion
 	}
 }

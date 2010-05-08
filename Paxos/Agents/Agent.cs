@@ -6,14 +6,22 @@ using System.Threading;
 using log4net;
 using Paxos.Messages;
 
-namespace Paxos
+namespace Paxos.Agents
 {
 	public class Agent
 	{
-		private static readonly Dictionary<Type,int> counters = new Dictionary<Type, int>();
+		private static readonly Dictionary<Type, int> counters = new Dictionary<Type, int>();
 
+		private readonly string name;
+
+		private readonly ConcurrentQueue<Message> queue = new ConcurrentQueue<Message>();
+		private readonly Random random = new Random();
+
+		private readonly IDictionary<Type, Action<object>> registrations = new Dictionary<Type, Action<object>>();
+		private readonly ConcurrentBag<Message> unordered = new ConcurrentBag<Message>();
+
+		private readonly SemaphoreSlim waitForMessages = new SemaphoreSlim(0);
 		protected ILog log;
-		readonly string name;
 
 		public Agent()
 		{
@@ -24,14 +32,6 @@ namespace Paxos
 			name = GetType().Name + " #" + (value);
 			log = LogManager.GetLogger(name);
 		}
-
-		private readonly ConcurrentQueue<Message> queue = new ConcurrentQueue<Message>();
-		private readonly Random random = new Random();
-
-		private readonly IDictionary<Type, Action<object>> registrations = new Dictionary<Type, Action<object>>();
-		private readonly ConcurrentBag<Message> unordered = new ConcurrentBag<Message>();
-
-		private readonly SemaphoreSlim waitForMessages = new SemaphoreSlim(0);
 
 		public bool ExecuteWork { get; set; }
 
