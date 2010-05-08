@@ -29,8 +29,10 @@ namespace Paxos.Agents
 			counters.TryGetValue(GetType(), out value);
 			value += 1;
 			counters[GetType()] = value;
-			name = GetType().Name + " #" + (value);
+			name = string.Format("{0,-12}", GetType().Name + " #" + (value));
 			log = LogManager.GetLogger(name);
+			name = name.Trim();
+			ExecuteWork = true;
 		}
 
 		public bool ExecuteWork { get; set; }
@@ -38,40 +40,59 @@ namespace Paxos.Agents
 		[DebuggerNonUserCode]
 		public void SendMessage(Message message)
 		{
-			//DispatchMessage(message);
-			EnqueueMessage(message);
+			log.DebugFormat("Sending {0} from {1} to {2}", message.GetType().Name, message.Originator, this);
+			//DispatchMessage(message); -- if you want to message processing to be point to point immediate
+			//EnqueueMessage(message); -- if you want reliable message processing
 
-			//switch (random.Next(1, 10)) // simulate strangeness in message passing
-			//{
-			//    default:
-			//        EnqueueMessage(message);
-			//        break;
-			//    case 2: // message lost 10% of the time
-			//        break;
-			//    case 3: // message arrive multiple times 10% of the time
-			//        for (int i = 0; i < random.Next(2, 5); i++)
-			//        {
-			//            EnqueueMessage(message);
-			//        }
-			//        break;
-			//    case 4: // message will arrive out of order 10% of the time
-			//        unordered.Add(message);
-			//        break;
-			//}
+			SendInUnreliableManner(message);
+		}
 
-			//Message result; // send message out of order
-			//if (unordered.TryTake(out result))
-			//    EnqueueMessage(result);
+		private void SendInUnreliableManner(Message message)
+		{
+			if (message is IInternalMessage)
+			{
+				EnqueueMessage(message);
+				return;
+			}
+
+			switch (random.Next(1, 10)) // simulate strangeness in message passing
+			{
+				default:
+					EnqueueMessage(message);
+					break;
+				case 2: // message lost 10% of the time
+					log.DebugFormat("Message lost, opps");
+					break;
+				case 3: // message arrive multiple times 10% of the time
+					int times = random.Next(2, 5);
+					log.DebugFormat("Message will arrive {0} times", times);
+					for (int i = 0; i < times; i++)
+					{
+						EnqueueMessage(message);
+					}
+					break;
+				case 4: // message will arrive out of order 10% of the time
+					log.DebugFormat("Message will be unordered");
+					unordered.Add(message);
+					waitForMessages.Release(1);
+					break;
+			}
+
+			Message result; // send message out of order
+			while (unordered.TryTake(out result))
+			{
+				log.DebugFormat("Delivering un-ordered message {0}: {1}", result.GetType().Name, result);
+				EnqueueMessage(result);
+			}
 		}
 
 
-		public void ExecuteMultiThreaded()
+		public void ExecuteMultiThreaded(object _)
 		{
 			while (ExecuteWork)
 			{
 				ConsumeAllMessages();
-				ProcessTimeouts();
-				waitForMessages.Wait();
+				waitForMessages.Wait(TimeSpan.FromSeconds(1));
 			}
 		}
 
@@ -83,7 +104,9 @@ namespace Paxos.Agents
 			{
 				hadMessages = true;
 				DispatchMessage(result);
+				ProcessTimeouts();
 			}
+			ProcessTimeouts();
 			return hadMessages;
 		}
 
@@ -101,7 +124,7 @@ namespace Paxos.Agents
 		[DebuggerNonUserCode]
 		public void Register<T>(Action<T> action)
 		{
-			registrations[typeof (T)] = new InvokerWithoutDebugger<T>(action).Invoke;
+			registrations[typeof(T)] = new InvokerWithoutDebugger<T>(action).Invoke;
 		}
 
 		private void EnqueueMessage(Message message)
@@ -134,7 +157,7 @@ namespace Paxos.Agents
 			[DebuggerNonUserCode]
 			public void Invoke(object obj)
 			{
-				action((T) obj);
+				action((T)obj);
 			}
 		}
 

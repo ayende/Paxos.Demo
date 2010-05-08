@@ -147,6 +147,8 @@ namespace Paxos.Agents
 			foreach (var timedOutPropsalState in proposalsState.Values.Where(x => x.LastMessage.AddSeconds(1) < DateTime.Now))
 			{
 				suggested = true;
+				log.DebugFormat("Timeout detected on {0}, retrying", timedOutPropsalState.ProposalNumber);
+				timedOutPropsalState.LastMessage = DateTime.Now;
 				foreach (var acceptor in acceptors)
 				{
 					acceptor.SendMessage(new Propose
@@ -186,7 +188,7 @@ namespace Paxos.Agents
 
 		#region Nested type: StartProposing
 
-		private class StartProposing : Message
+		private class StartProposing : Message, IInternalMessage
 		{
 			public ICommand Value { get; set; }
 		}

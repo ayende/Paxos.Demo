@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Paxos.Commands;
 using Paxos.Messages;
@@ -11,6 +13,7 @@ namespace Paxos.Agents
 
 		private readonly HashSet<Agent> knownAcceptors = new HashSet<Agent>();
 		private readonly Dictionary<int, LearnerState> learnerState = new Dictionary<int, LearnerState>();
+		private DateTime lastRequestedTopProposal = DateTime.MinValue;
 
 		public Learner(int acceptorsCount)
 		{
@@ -45,8 +48,9 @@ namespace Paxos.Agents
 			}
 			else if (state.Accepted == false)
 			{
+				log.DebugFormat("Value accepted for {0}", state.ProposalNumber);
 				state.NumberOfAccepts += 1;
-				if (state.NumberOfAccepts < acceptorsCount/2)
+				if (state.NumberOfAccepts < acceptorsCount / 2)
 					return;
 				while (Commands.Count < state.ProposalNumber)
 					Commands.Add(null);
@@ -64,8 +68,14 @@ namespace Paxos.Agents
 				if (Commands[i] == null)
 					missingProposals.Add(i + 1);
 			}
+			if (lastRequestedTopProposal.AddSeconds(Debugger.IsAttached ? 30 : 3) < DateTime.Now)
+			{
+				lastRequestedTopProposal = DateTime.Now;
+				missingProposals.Add(Commands.Count+1); // in case we didn't get the latest proposal
+			}
 			foreach (var missingProposal in missingProposals)
 			{
+				log.DebugFormat("Querying accepted value for {0}", missingProposal);
 				requestedHoles = true;
 				foreach (var acceptor in knownAcceptors)
 				{

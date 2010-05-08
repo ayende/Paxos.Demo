@@ -47,22 +47,23 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Acceptor.cs" />
+    <Compile Include="Agents\Acceptor.cs" />
     <Compile Include="Commands\Add.cs" />
     <Compile Include="Commands\Multiply.cs" />
     <Compile Include="Commands\ICommand.cs" />
-    <Compile Include="Learner.cs" />
+    <Compile Include="Agents\Learner.cs" />
     <Compile Include="Messages\Accept.cs" />
-    <Compile Include="Agent.cs" />
+    <Compile Include="Agents\Agent.cs" />
     <Compile Include="Messages\Accepted.cs" />
     <Compile Include="Messages\AcceptedValueQuery.cs" />
+    <Compile Include="Messages\IInternalMessage.cs" />
     <Compile Include="Messages\Message.cs" />
     <Compile Include="Messages\ProposalSubsumed.cs" />
     <Compile Include="Messages\Propose.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Messages\Promise.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Proposer.cs" />
+    <Compile Include="Agents\Proposer.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

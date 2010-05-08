@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Linq;
 using System.Threading;
+using log4net.Appender;
+using log4net.Config;
+using log4net.Layout;
 using Paxos.Agents;
 using Paxos.Commands;
 
@@ -12,7 +15,7 @@ namespace Paxos
 		{
 			//BasicConfigurator.Configure(new ConsoleAppender
 			//{
-			//    Layout = new PatternLayout(PatternLayout.DetailConversionPattern)
+			//    Layout = new PatternLayout("%logger - %message%newline")
 			//});
 
 			var learners = new[]
@@ -36,17 +39,23 @@ namespace Paxos
 
 			var agents = acceptors.OfType<Agent>().Union(proposers).Union(learners).ToArray();
 
+			foreach (var agent in agents)
+			{
+				new Thread(agent.ExecuteMultiThreaded)
+				{
+					Name = agent.ToString(),
+					IsBackground = true
+				}.Start();
+			}
+
 			proposers[0].Propose(new Add {Value = 5});
 			proposers[1].Propose(new Multiply {Value = 3});
 			proposers[2].Propose(new Add {Value = 2});
-
-			ConsumeAllMessages(agents);
 
 			WaitForNewValues(learners);
 
 			proposers[2].Propose(new Multiply {Value = 3});
 			proposers[1].Propose(new Add {Value = 4});
-			ConsumeAllMessages(agents);
 
 			WaitForNewValues(learners);
 		}
@@ -59,12 +68,12 @@ namespace Paxos
 			{
 				while (Thread.VolatileRead(ref shouldStop) == 0)
 				{
-					Thread.Sleep(1000);
 					foreach (var learner in learners)
 					{
-						Console.WriteLine(learner.AppliedValue);
+						Console.WriteLine("# of commands: {0}. Value: {1}", learner.Commands.Count, learner.AppliedValue);
 					}
 					Console.WriteLine("- - - - - - - - -");
+					Thread.Sleep(1000);
 				}
 			});
 
