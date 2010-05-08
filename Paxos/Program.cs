@@ -70,7 +70,7 @@ namespace Paxos
 				{
 					foreach (var learner in learners)
 					{
-						Console.WriteLine("# of commands: {0}. Value: {1}", learner.Commands.Count, learner.AppliedValue);
+						Console.WriteLine("# of commands: {0}. Value: {1}", learner.Commands.TakeWhile(x=>x!=null).Count(), learner.AppliedValue);
 					}
 					Console.WriteLine("- - - - - - - - -");
 					Thread.Sleep(1000);

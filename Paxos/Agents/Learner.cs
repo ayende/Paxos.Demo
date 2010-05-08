@@ -68,7 +68,7 @@ namespace Paxos.Agents
 				if (Commands[i] == null)
 					missingProposals.Add(i + 1);
 			}
-			if (lastRequestedTopProposal.AddSeconds(Debugger.IsAttached ? 30 : 3) < DateTime.Now)
+			if (lastRequestedTopProposal.AddSeconds(1) < DateTime.Now)
 			{
 				lastRequestedTopProposal = DateTime.Now;
 				missingProposals.Add(Commands.Count+1); // in case we didn't get the latest proposal
